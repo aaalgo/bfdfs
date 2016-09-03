@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <boost/filesystem.hpp> 
 #include <boost/filesystem/fstream.hpp> 
 #include <boost/program_options.hpp>
@@ -10,6 +11,9 @@ namespace fs = boost::filesystem;
 int main(int argc, char const* argv[]) {
     fs::path root;
     string output;
+    string target_O;
+    string target_B;
+    string name;
 
     namespace po = boost::program_options;
     po::options_description desc("Allowed options");
@@ -17,6 +21,9 @@ int main(int argc, char const* argv[]) {
         ("help,h", "produce help message.")
         ("output", po::value(&output), "")
         ("root", po::value(&root), "")
+        (",O", po::value(&target_O)->default_value("elf64-x86-64"), "")
+        (",B", po::value(&target_B)->default_value("i386:x86-64"), "")
+        ("name,n", po::value(&name)->default_value("bfdfs_blob"), "")
         ("check", "")
         ;
 
@@ -38,7 +45,8 @@ int main(int argc, char const* argv[]) {
     }
 
     string prefix = root.native();
-    bfdfs::BlobWriter writer(output);
+    fs::path temp(name);
+    bfdfs::BlobWriter writer(temp.native());
     for (fs::recursive_directory_iterator dir_end, dir(root); dir != dir_end; ++dir) {
         fs::path path(*dir);
         if (!fs::is_regular_file(path)) continue;
@@ -50,7 +58,10 @@ int main(int argc, char const* argv[]) {
         fs::ifstream is(path, ios::binary);
         writer.append(name, is);
     }
-
+    ostringstream oss;
+    oss << "objcopy -I binary -O " << target_O << " -B " << target_B << " " << temp << " " << output;
+    std::system(oss.str().c_str());
+    fs::remove(temp);
     return 0;
 }
 
