@@ -1,3 +1,4 @@
+#include <fnmatch.h>
 #include <iostream>
 #include <sstream>
 #include <boost/filesystem.hpp> 
@@ -9,6 +10,7 @@ using namespace std;
 namespace fs = boost::filesystem; 
 
 int main(int argc, char const* argv[]) {
+    vector<string> excludes;
     fs::path root;
     string output;
     string target_O;
@@ -25,6 +27,7 @@ int main(int argc, char const* argv[]) {
         (",B", po::value(&target_B)->default_value("i386:x86-64"), "")
         ("name,n", po::value(&name)->default_value("bfdfs_blob"), "")
         ("check", "")
+        ("exclude,x", po::value(&excludes), "")
         ;
 
     po::positional_options_description p;
@@ -51,6 +54,15 @@ int main(int argc, char const* argv[]) {
         for (fs::recursive_directory_iterator dir_end, dir(root); dir != dir_end; ++dir) {
             fs::path path(*dir);
             if (!fs::is_regular_file(path)) continue;
+            string bn = path.filename().native();
+            bool good = true;
+            for (auto const &v: excludes) {
+                if (fnmatch(v.c_str(), bn.c_str(), 0) == 0) {
+                    good = false;
+                    break;
+                }
+            }
+            if (!good) continue;
             string full = path.native();
             if (full.find(prefix) != 0) throw 0;
             size_t o = prefix.size();
