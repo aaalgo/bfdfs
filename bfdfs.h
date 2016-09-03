@@ -58,7 +58,7 @@ namespace bfdfs {
             dir.push_back(e);
         }
 
-        BlobWriter () {
+        ~BlobWriter () {
             uint32_t p = os.tellp();
             if (p != os.tellp()) throw "Data too big";
             dir_offset = (p + DIR_ALIGN -1) / DIR_ALIGN * DIR_ALIGN;
@@ -71,14 +71,16 @@ namespace bfdfs {
         }
     };
 
-    class Root: unordered_map<string, std::pair<char const *, char const *>> {
+    class Root: public unordered_map<string, std::pair<char const *, char const *>> {
     public:
         Root (char const *base) {
             uint32_t count = *reinterpret_cast<uint32_t const *>(base);
             uint32_t dir_off = *reinterpret_cast<uint32_t const *>(base + sizeof(count));
+            std::cout << count << '\t' << dir_off << std::endl;
             DirEntry const *e = reinterpret_cast<DirEntry const *>(base + dir_off);
             for (uint32_t i = 0; i < count; ++i) {
                 string name(base + e->name_offset, base + e->name_offset + e->name_length);
+                std::cout << name << std::endl;
                 char const *first = base + e->content_offset;
                 char const *second = first + e->content_length;
                 (*this)[name] = std::make_pair(first, second);

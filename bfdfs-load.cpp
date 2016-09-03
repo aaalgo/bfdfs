@@ -46,22 +46,24 @@ int main(int argc, char const* argv[]) {
 
     string prefix = root.native();
     fs::path temp(name);
-    bfdfs::BlobWriter writer(temp.native());
-    for (fs::recursive_directory_iterator dir_end, dir(root); dir != dir_end; ++dir) {
-        fs::path path(*dir);
-        if (!fs::is_regular_file(path)) continue;
-        string full = path.native();
-        if (full.find(prefix) != 0) throw 0;
-        size_t o = prefix.size();
-        if (full[o] == '/') o++; 
-        string name = full.substr(o);
-        fs::ifstream is(path, ios::binary);
-        writer.append(name, is);
+    {
+        bfdfs::BlobWriter writer(temp.native());
+        for (fs::recursive_directory_iterator dir_end, dir(root); dir != dir_end; ++dir) {
+            fs::path path(*dir);
+            if (!fs::is_regular_file(path)) continue;
+            string full = path.native();
+            if (full.find(prefix) != 0) throw 0;
+            size_t o = prefix.size();
+            if (full[o] == '/') o++; 
+            string name = full.substr(o);
+            fs::ifstream is(path, ios::binary);
+            writer.append(name, is);
+        }
     }
     ostringstream oss;
     oss << "objcopy -I binary -O " << target_O << " -B " << target_B << " " << temp << " " << output;
     std::system(oss.str().c_str());
-    fs::remove(temp);
+    //fs::remove(temp);
     return 0;
 }
 
