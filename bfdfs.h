@@ -92,10 +92,8 @@ namespace bfdfs {
         }
 
         string get (string const &key) const {
-            auto it = find(key);
-            if (it == end()) throw 0;
-            return string(it->second.first,
-                          it->second.second);
+            auto const &p = at(key);
+            return string(p.first, p.second);
         }
 
     };
