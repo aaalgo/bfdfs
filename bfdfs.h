@@ -48,13 +48,16 @@ namespace bfdfs {
         }
 
         void append (std::string const &path, std::istream &str) {
+            char zero = 0;
             DirEntry e;
             e.name_offset = os.tellp();
             e.name_length = path.size();
             os.write(&path[0], path.size());
+            os.write(&zero, 1);
             e.content_offset = os.tellp();
             os << str.rdbuf();
             e.content_length = uint32_t(os.tellp()) - e.content_offset;
+            os.write(&zero, 1);
             dir.push_back(e);
         }
 
@@ -71,9 +74,9 @@ namespace bfdfs {
         }
     };
 
-    class Root: public unordered_map<string, std::pair<char const *, char const *>> {
+    class Loader: public unordered_map<string, std::pair<char const *, char const *>> {
     public:
-        Root (char const *base) {
+        Loader (char const *base) {
             uint32_t count = *reinterpret_cast<uint32_t const *>(base);
             uint32_t dir_off = *reinterpret_cast<uint32_t const *>(base + sizeof(count));
             std::cout << count << '\t' << dir_off << std::endl;
@@ -87,6 +90,14 @@ namespace bfdfs {
                 e++;
             }
         }
+
+        string get (string const &key) const {
+            auto it = find(key);
+            if (it == end()) throw 0;
+            return string(it->second.first,
+                          it->second.second);
+        }
+
     };
 }
 
