@@ -66,7 +66,7 @@ int main(int argc, char const* argv[]) {
             string full = path.native();
             if (full.find(prefix) != 0) throw 0;
             size_t o = prefix.size();
-            if (full[o] == '/') o++; 
+            //if (full[o] == '/') o++; 
             string name = full.substr(o);
             fs::ifstream is(path, ios::binary);
             writer.append(name, is);
