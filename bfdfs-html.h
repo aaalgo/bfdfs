@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <boost/boostache/boostache.hpp>
 #include <boost/boostache/frontend/stache/grammar_def.hpp> // need to work out header only syntax
 #include <boost/boostache/stache.hpp>
@@ -26,13 +27,13 @@ namespace bfdfs {
         string read_file (string const &prefix, string const &path) const {
             string p = dynamic_root + prefix + path;
             std::ifstream is(p.c_str());
-            if (!is) throw runtime_error("cannot open " + p);
+            if (!is) throw std::runtime_error("cannot open " + p);
             is.seekg(0, std::ios::end);
             string x;
             x.resize(is.tellg());
             is.seekg(0);
             is.read(&x[0], x.size());
-            if (!is) throw runtime_error("failed to read " + p);
+            if (!is) throw std::runtime_error("failed to read " + p);
             return x;
         }
     public:
