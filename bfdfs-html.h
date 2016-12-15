@@ -23,7 +23,7 @@ namespace bfdfs {
         magic_t cookie;
         string dynamic_root;
 
-        string read_file (prefix, path) {
+        string read_file (string const &prefix, string const &path) {
             string p = dynamic_root + prefix + path;
             std::ifstream is(p.c_str());
             if (!is) throw runtime_error("cannot open " + p);
