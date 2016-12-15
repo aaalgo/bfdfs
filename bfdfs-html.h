@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <fstream>
 #include <sstream>
 #include <boost/boostache/boostache.hpp>
 #include <boost/boostache/frontend/stache/grammar_def.hpp> // need to work out header only syntax
@@ -20,10 +21,26 @@ namespace bfdfs {
         Loader statics;
         Loader templates;
         magic_t cookie;
+        string dynamic_root;
+
+        string read_file (prefix, path) {
+            string p = dynamic_root + prefix + path;
+            std::ifstream is(p.c_str());
+            if (!is) throw runtime_error("cannot open " + p);
+            is.seekg(0, std::ios::end);
+            string x;
+            x.resize(is.tellg());
+            is.seekg(0);
+            is.read(&x[0], x.size());
+            if (!is) throw runtime_error("failed to read " + p);
+            return x;
+        }
     public:
-        HTML ():
+        HTML (string const &droot = ""):
             statics(&_binary_html_static_start),
-            templates(&_binary_html_template_start) {
+            templates(&_binary_html_template_start),
+            dynamic_root(droot)
+        {
             cookie = magic_open(MAGIC_MIME_TYPE);
             magic_load(cookie, NULL);
         }
@@ -38,7 +55,16 @@ namespace bfdfs {
                                  string const &path,
                                  Context const &context) const {
             try {
-                auto p = templates.at(path);
+                string buf;
+                std::pair<char const *, char const *> p;
+                if (dynamic_root.size()) {
+                    buf = read_file("/template",  path);
+                    p.first = &buf[0];
+                    p.second = p.first + buf.size();
+                }
+                else {
+                    p = templates.at(path);
+                }
                 char const *mime = magic_buffer(cookie, p.first, p.second - p.first);
                 res.set_header("Content-Type", mime);
                 auto tmpl = boostache::load_template<boostache::format::stache>(p.first, p.second);
@@ -54,7 +80,13 @@ namespace bfdfs {
         void send_to_response (served::response &res,
                                 string const &path) const {
             try {
-                string buf = statics.get(path);
+                string buf;
+                if (dynamic_root.size()) {
+                    buf = read_file("/static",  path);
+                }
+                else {
+                    buf = statics.get(path);
+                }
                 char const *mime = magic_buffer(cookie, &buf[0], buf.size());
                 res.set_header("Content-Type", mime);
                 res.set_body(buf);
@@ -70,7 +102,16 @@ namespace bfdfs {
         void render_to_response (std::shared_ptr<Response> res,
                                  string const &path,
                                  Context const &context) const {
-            auto p = templates.at(path);
+            string buf;
+            std::pair<char const *, char const *> p;
+            if (dynamic_root.size()) {
+                buf = read_file("/template",  path);
+                p.first = &buf[0];
+                p.second = p.first + buf.size();
+            }
+            else {
+                p = templates.at(path);
+            }
             char const *mime = magic_buffer(cookie, p.first, p.second - p.first);
             auto tmpl = boostache::load_template<boostache::format::stache>(p.first, p.second);
             std::stringstream ss;
@@ -84,7 +125,13 @@ namespace bfdfs {
 
         void send_to_response (std::shared_ptr<Response> res,
                                 string const &path) const {
-            string text = statics.get(path);
+            string text;
+            if (dynamic_root.size()) {
+                text = read_file("/static",  path);
+            }
+            else {
+                text = statics.get(path);
+            }
             char const *mime = magic_buffer(cookie, &text[0], text.size());
             *res << "HTTP/1.1 200 OK\r\n";
             *res << "Content-Type: " << mime << "\r\n";
