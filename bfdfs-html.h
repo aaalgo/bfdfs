@@ -19,6 +19,7 @@ namespace bfdfs {
 
     static std::unordered_map<string, string> const EXT_MIME{
         {".html", "text/html"},
+        {".css", "text/css"},
         {".js", "application/javascript"},
     };
     static std::string const DEFAULT_MIME("application/octet-stream");

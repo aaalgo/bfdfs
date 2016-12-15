@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 #include <fstream>
 #include <unordered_map>
 
@@ -55,7 +56,9 @@ namespace bfdfs {
             os.write(&path[0], path.size());
             os.write(&zero, 1);
             e.content_offset = os.tellp();
-            os << str.rdbuf();
+            if (str.rdbuf()->in_avail()) {
+                os << str.rdbuf();
+            }
             e.content_length = uint32_t(os.tellp()) - e.content_offset;
             os.write(&zero, 1);
             dir.push_back(e);
