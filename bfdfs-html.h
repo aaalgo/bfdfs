@@ -2,13 +2,12 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 #include <boost/boostache/boostache.hpp>
 #include <boost/boostache/frontend/stache/grammar_def.hpp> // need to work out header only syntax
 #include <boost/boostache/stache.hpp>
 #include <boost/boostache/model/helper.hpp>
 //#include <served/served.hpp>
-#include <magic.h>
-
 #include "bfdfs.h"
 
 extern char _binary_html_static_start;
@@ -18,11 +17,18 @@ namespace bfdfs {
 
     namespace boostache = boost::boostache;
 
+    static std::unordered_map<string, string> const EXT_MIME{
+        {".html", "text/html"},
+        {".css", "text/css"},
+        {".js", "application/javascript"},
+    };
+    static std::string const DEFAULT_MIME("application/octet-stream");
+
     class HTML {
         Loader statics;
         Loader templates;
-        magic_t cookie;
         string dynamic_root;
+
 
         string read_file (string const &prefix, string const &path) const {
             string p = dynamic_root + prefix + path;
@@ -36,18 +42,31 @@ namespace bfdfs {
             if (!is) throw std::runtime_error("failed to read " + p);
             return x;
         }
+
+        static string const &path2mime (string const &path) {
+            do {
+                auto p = path.rfind('.');
+                if (p == path.npos) break;
+                string ext = path.substr(p);
+                auto it = EXT_MIME.find(ext);
+                if (it == EXT_MIME.end()) break;
+                return it->second;
+            } while (false);
+            return DEFAULT_MIME;
+        }
     public:
         HTML (string const &droot = ""):
             statics(&_binary_html_static_start),
             templates(&_binary_html_template_start),
             dynamic_root(droot)
         {
-            cookie = magic_open(MAGIC_MIME_TYPE);
-            magic_load(cookie, NULL);
         }
 
         ~HTML () {
-            magic_close(cookie);
+        }
+
+        std::pair<char const *, char const *> getStatic (string const &path) const {
+            return statics.at(path);
         }
 
 #ifdef SERVED_HPP   // served
@@ -66,8 +85,7 @@ namespace bfdfs {
                 else {
                     p = templates.at(path);
                 }
-                char const *mime = magic_buffer(cookie, p.first, p.second - p.first);
-                res.set_header("Content-Type", mime);
+                res.set_header("Content-Type", path2mime(path));
                 auto tmpl = boostache::load_template<boostache::format::stache>(p.first, p.second);
                 std::stringstream ss;
                 boostache::generate(ss, tmpl, context);
@@ -88,8 +106,7 @@ namespace bfdfs {
                 else {
                     buf = statics.get(path);
                 }
-                char const *mime = magic_buffer(cookie, &buf[0], buf.size());
-                res.set_header("Content-Type", mime);
+                res.set_header("Content-Type", path2mime(path));
                 res.set_body(buf);
             }
             catch (std::out_of_range const &) {
@@ -113,13 +130,12 @@ namespace bfdfs {
             else {
                 p = templates.at(path);
             }
-            char const *mime = magic_buffer(cookie, p.first, p.second - p.first);
             auto tmpl = boostache::load_template<boostache::format::stache>(p.first, p.second);
             std::stringstream ss;
             boostache::generate(ss, tmpl, context);
             string text = ss.str();
             *res << "HTTP/1.1 200 OK\r\n";
-            *res << "Content-Type: " << mime << "\r\n";
+            *res << "Content-Type: " << path2mime(path) << "\r\n";
             *res << "Content-Length: " << text.size() << "\r\n\r\n";
             *res << text;
         }
@@ -133,9 +149,8 @@ namespace bfdfs {
             else {
                 text = statics.get(path);
             }
-            char const *mime = magic_buffer(cookie, &text[0], text.size());
             *res << "HTTP/1.1 200 OK\r\n";
-            *res << "Content-Type: " << mime << "\r\n";
+            *res << "Content-Type: " << path2mime(path) << "\r\n";
             *res << "Content-Length: " << text.size() << "\r\n\r\n";
             *res << text;
         }

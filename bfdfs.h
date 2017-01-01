@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -62,11 +63,9 @@ namespace bfdfs {
             os.write(&path[0], path.size());
             os.write(&zero, 1);
             e.content_offset = os.tellp();
-            std::cerr << os.tellp() << " => ";
             std::copy(std::istreambuf_iterator<char>(str),
                       std::istreambuf_iterator<char>(),
                       std::ostreambuf_iterator<char>(os));
-            std::cerr << os.tellp() << std::endl;
             e.content_length = uint32_t(os.tellp()) - e.content_offset;
             os.write(&zero, 1);
             dir.push_back(e);
