@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <iterator>
+#include <stdexcept>
 #include <unordered_map>
+#include <algorithm>
 
 // BFDFS blob format
 // uint32_t file_count  # number of files in the blob
@@ -45,6 +48,10 @@ namespace bfdfs {
         {
             os.write(reinterpret_cast<char const *>(&file_count), sizeof(file_count));
             os.write(reinterpret_cast<char const *>(&dir_offset), sizeof(dir_offset));
+            if (!os) {
+                std::cerr << "Failed to open and write " << path << std::endl;
+                throw std::runtime_error("fail to create file: " + path);
+            }
         }
 
         void append (std::string const &path, std::istream &str) {
@@ -55,7 +62,11 @@ namespace bfdfs {
             os.write(&path[0], path.size());
             os.write(&zero, 1);
             e.content_offset = os.tellp();
-            os << str.rdbuf();
+            std::cerr << os.tellp() << " => ";
+            std::copy(std::istreambuf_iterator<char>(str),
+                      std::istreambuf_iterator<char>(),
+                      std::ostreambuf_iterator<char>(os));
+            std::cerr << os.tellp() << std::endl;
             e.content_length = uint32_t(os.tellp()) - e.content_offset;
             os.write(&zero, 1);
             dir.push_back(e);
@@ -63,7 +74,9 @@ namespace bfdfs {
 
         ~BlobWriter () {
             uint32_t p = os.tellp();
-            if (p != os.tellp()) throw "Data too big";
+            if (p != os.tellp()) {
+                throw std::runtime_error("file size not consistent");
+            }
             dir_offset = (p + DIR_ALIGN -1) / DIR_ALIGN * DIR_ALIGN;
             file_count = dir.size();
             os.seekp(dir_offset, std::ios::beg);
