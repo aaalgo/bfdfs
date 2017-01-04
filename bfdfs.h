@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <algorithm>
+#include <boost/uuid/sha1.hpp>
 
 // BFDFS blob format
 // uint32_t file_count  # number of files in the blob
@@ -86,7 +87,32 @@ namespace bfdfs {
         }
     };
 
-    class Loader: public unordered_map<string, std::pair<char const *, char const *>> {
+    struct Page {
+        char const *begin, *end;
+        string checksum;
+    };
+
+    class Loader: public unordered_map<string, Page> {
+
+		static void sha1sum (char const *data, unsigned length, std::string *checksum) {
+			uint32_t digest[5];
+			boost::uuids::detail::sha1 sha1;
+			sha1.process_block(data, data+length);
+			sha1.get_digest(digest);
+			static char const digits[] = "0123456789abcdef";
+			checksum->clear();
+			for(uint32_t c: digest) {
+				checksum->push_back(digits[(c >> 28) & 0xF]);
+				checksum->push_back(digits[(c >> 24) & 0xF]);
+				checksum->push_back(digits[(c >> 20) & 0xF]);
+				checksum->push_back(digits[(c >> 16) & 0xF]);
+				checksum->push_back(digits[(c >> 12) & 0xF]);
+				checksum->push_back(digits[(c >> 8) & 0xF]);
+				checksum->push_back(digits[(c >> 4) & 0xF]);
+				checksum->push_back(digits[c & 0xF]);
+			}
+		}
+        
     public:
         Loader (char const *base) {
             uint32_t count = *reinterpret_cast<uint32_t const *>(base);
@@ -96,16 +122,18 @@ namespace bfdfs {
             for (uint32_t i = 0; i < count; ++i) {
                 string name(base + e->name_offset, base + e->name_offset + e->name_length);
                 std::cout << name << std::endl;
-                char const *first = base + e->content_offset;
-                char const *second = first + e->content_length;
-                (*this)[name] = std::make_pair(first, second);
+                Page page;
+                page.begin = base + e->content_offset;
+                page.end = page.begin + e->content_length;
+				sha1sum(page.begin, page.end - page.begin, &page.checksum);
+                (*this)[name] = page;
                 e++;
             }
         }
 
         string get (string const &key) const {
             auto const &p = at(key);
-            return string(p.first, p.second);
+            return string(p.begin, p.end);
         }
 
     };
