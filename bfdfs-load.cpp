@@ -16,6 +16,7 @@ int main(int argc, char const* argv[]) {
     string target_O;
     string target_B;
     string name;
+    string objcopy;
 
     namespace po = boost::program_options;
     po::options_description desc("Allowed options");
@@ -28,6 +29,7 @@ int main(int argc, char const* argv[]) {
         ("name,n", po::value(&name)->default_value("bfdfs_blob"), "")
         ("check", "")
         ("exclude,x", po::value(&excludes), "")
+        ("objcopy", po::value(&objcopy)->default_value("objcopy"), "")
         ;
 
     po::positional_options_description p;
@@ -73,7 +75,7 @@ int main(int argc, char const* argv[]) {
         }
     }
     ostringstream oss;
-    oss << "objcopy -I binary -O " << target_O << " -B " << target_B << " " << temp << " " << output;
+    oss << objcopy << " -I binary -O " << target_O << " -B " << target_B << " " << temp << " " << output;
     std::system(oss.str().c_str());
     //fs::remove(temp);
     return 0;
