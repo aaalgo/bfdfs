@@ -117,11 +117,11 @@ namespace bfdfs {
         Loader (char const *base) {
             uint32_t count = *reinterpret_cast<uint32_t const *>(base);
             uint32_t dir_off = *reinterpret_cast<uint32_t const *>(base + sizeof(count));
-            std::cout << count << '\t' << dir_off << std::endl;
+            //std::cout << count << '\t' << dir_off << std::endl;
             DirEntry const *e = reinterpret_cast<DirEntry const *>(base + dir_off);
             for (uint32_t i = 0; i < count; ++i) {
                 string name(base + e->name_offset, base + e->name_offset + e->name_length);
-                std::cout << name << std::endl;
+                //std::cout << name << std::endl;
                 Page page;
                 page.begin = base + e->content_offset;
                 page.end = page.begin + e->content_length;
