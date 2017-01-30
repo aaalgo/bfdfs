@@ -134,7 +134,7 @@ namespace bfdfs {
             }
         }
 
-        bool find (string const &key, Page *page) const {
+        bool load (string const &key, Page *page) const {
             while (root.size()) {   // one itaration loop
                 string const &path = root + key;
                 ifstream is(key.c_str(), std::ios::binary);
@@ -151,7 +151,7 @@ namespace bfdfs {
                 is.read(&buf[0], sz);
                 if (!is) break; // fallback
                 sha1sum(&buf[0], sz, &page->checksum);
-                buf->resize(sz);
+                buf.resize(sz);
                 page->buffer.swap(buf);
                 page->begin = &page->buffer[0];
                 page->end = page->begin + sz;
