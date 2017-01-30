@@ -139,9 +139,8 @@ namespace bfdfs {
                 string const &path = root + key;
                 ifstream is(key.c_str(), std::ios::binary);
                 if (!is) break; // fallback
-                size_t sz;
                 is.seekg(0, std::ios::end);
-                sz = is.tellg();
+                auto sz = is.tellg();
                 if (sz < 0) break;  // fallback
                 string buf;
                 // we use sz + 1 to support checksumming empty string
