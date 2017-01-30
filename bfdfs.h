@@ -24,6 +24,7 @@
 
 namespace bfdfs {
     using std::vector;
+    using std::ifstream;
     using std::ofstream;
     using std::string;
     using std::unordered_map;
@@ -90,9 +91,10 @@ namespace bfdfs {
     struct Page {
         char const *begin, *end;
         string checksum;
+        string buffer;
     };
 
-    class Loader: public unordered_map<string, Page> {
+    class Loader: private unordered_map<string, Page> {
 
 		static void sha1sum (char const *data, unsigned length, std::string *checksum) {
 			uint32_t digest[5];
@@ -113,8 +115,9 @@ namespace bfdfs {
 			}
 		}
         
+        string const root;
     public:
-        Loader (char const *base) {
+        Loader (char const *base, string const &root_): root(root_) {
             uint32_t count = *reinterpret_cast<uint32_t const *>(base);
             uint32_t dir_off = *reinterpret_cast<uint32_t const *>(base + sizeof(count));
             //std::cout << count << '\t' << dir_off << std::endl;
@@ -129,6 +132,37 @@ namespace bfdfs {
                 (*this)[name] = page;
                 e++;
             }
+        }
+
+        bool find (string const &key, Page *page) const {
+            while (root.size()) {   // one itaration loop
+                string const &path = root + key;
+                ifstream is(key.c_str(), std::ios::binary);
+                if (!is) break; // fallback
+                size_t sz;
+                is.seekg(0, std::ios::end);
+                sz = is.tellg();
+                if (sz < 0) break;  // fallback
+                string buf;
+                // we use sz + 1 to support checksumming empty string
+                // when we need &buf[0]
+                buf.resize(sz+1);
+                is.seekg(0);
+                is.read(&buf[0], sz);
+                if (!is) break; // fallback
+                sha1sum(&buf[0], sz, &page->checksum);
+                buf->resize(sz);
+                page->buffer.swap(buf);
+                page->begin = &page->buffer[0];
+                page->end = page->begin + sz;
+                return true;
+            }
+            auto it = find(key);
+            if (it != end()) {
+                *page = it->second;
+                return true;
+            }
+            return false;
         }
 
         string get (string const &key) const {
